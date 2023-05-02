@@ -50,11 +50,14 @@ if __name__ == '__main__':
                         help="CSV file with at least three field specifying the left "
                         "and right context as well as the target word and the label.")
     parser.add_argument('--label', required=True, help="Name of the label column.")
+    parser.add_argument('--batch-size', default=8, type=int)
     parser.add_argument('--lhs', default='left', help='Name of the left context column.')
     parser.add_argument('--target', default='hit', help='Name of the left context column.')
     parser.add_argument('--rhs', default='right', help='Name of the left context column.')
     parser.add_argument('--epochs', type=int, default=6, help="Number of epochs to train.")
     parser.add_argument('--output-dir', required=True, help="Directory to store the finetuned model.")
+    parser.add_argument('--results-path', help='Custom dir path for the results.')
+    parser.add_argument('--max-per-class', default=np.inf, help="Max items per class to train on.")
     parser.add_argument('--n-folds', type=int, default=10, help="Number of folds over the data.")
     args = parser.parse_args()
 
@@ -74,7 +77,7 @@ if __name__ == '__main__':
 
     data = pd.read_csv(args.input_file)
     for heading in [args.lhs, args.target, args.rhs]:
-        data[heading] = data[heading].transform(normalise)
+        data[heading] = data[heading].fillna('').transform(normalise)
     sents, starts, ends = read_data(data[args.lhs], data[args.target], data[args.rhs])
     sents, spans = encode_data(tokenizer, sents, starts, ends)
     sents, spans = np.array(sents), np.array(spans)
@@ -88,6 +91,14 @@ if __name__ == '__main__':
 
     for fold, (train, test) in enumerate(cv.split(np.zeros(len(y)), y)):
         train, dev = train_test_split(train, shuffle=True, stratify=y[train], test_size=0.1)
+
+        if args.max_per_class < np.inf:
+            train = pd.DataFrame(
+                {'labels': y[train], 'index': train}
+            ).groupby('labels').apply(
+                lambda g: sample_up_to_n(g, args.max_per_class)
+            ).reset_index(drop=True)['index'].values
+
         train_dataset = get_dataset(tokenizer, sents[train], spans[train], y[train])
         dev_dataset = get_dataset(tokenizer, sents[dev], spans[dev], y[dev])
         test_dataset = get_dataset(tokenizer, sents[test], spans[test], y[test])
@@ -102,8 +113,8 @@ if __name__ == '__main__':
         training_args = TrainingArguments(
             output_dir=args.output_dir,
             learning_rate=4.5e-5,
-            per_device_train_batch_size=8,
-            per_device_eval_batch_size=8,
+            per_device_train_batch_size=args.batch_size,
+            per_device_eval_batch_size=args.batch_size,
             num_train_epochs=args.epochs,
             weight_decay=0.1,
             do_eval=True,
@@ -134,6 +145,11 @@ if __name__ == '__main__':
             'trues': [id2label[y[i]] for i in test],
             'scores': scores, 
             'preds': preds}))
-
-    prefix, suffix = os.path.splitext(args.input_file)
-    pd.concat(folds).to_parquet(''.join([prefix, '.finetune.results.parquet']))
+        
+    prefix, _ = os.path.splitext(path)
+    if args.results_path:
+        if not os.path.isdir(args.results_path):
+            os.makedirs(args.results_path)
+        prefix = os.path.basename(prefix)
+        prefix = os.path.join(args.results_path, prefix)
+    pd.concat(folds).to_parquet(''.join([prefix, '.finetune-cv.results.parquet']))

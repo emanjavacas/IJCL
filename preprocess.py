@@ -80,6 +80,15 @@ def encode_data(tokenizer, sents, starts, ends, sym='[TGT]'):
     return output_sents, spans
 
 
+def sample_up_to_n(g, n):
+    """
+    Sample `n` items from a group, if less than `n` are available sample all.
+    """
+    if len(g) <= n:
+        return g
+    return g.sample(n=n)
+
+
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(
