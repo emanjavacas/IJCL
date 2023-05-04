@@ -2,7 +2,9 @@
 """
 preprocess.py: This file provides two utility functions that 
 help extracting contextual embeddings from a transformer model. 
-Mostly dealing with subtokenization.
+Mostly dealing with subtokenization. For more information on how 
+to run this script, run the command ‘python preprocess.py --help’ 
+in the command line.
 """
 
 __author__    = "Enrique Manjavacas"

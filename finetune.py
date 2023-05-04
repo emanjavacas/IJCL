@@ -1,7 +1,8 @@
 
 """
 finetune-cv.py: This script performs training on the provided train file, and
-inference on the provided test file.
+inference on the provided test file. For more information on how to run this 
+script, run the command ‘python finetune.py --help’ in the command line.
 """
 
 __author__    = "Enrique Manjavacas"

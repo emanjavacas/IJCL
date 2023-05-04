@@ -5,6 +5,8 @@ finetuning the model to classify the labels in your dataset.
 It outputs a parquet file with the results of all of the folds. 
 If, beside a training file, you already have a specific test file where you, 
 would like to test the resulting model, you should use the finetune.py script.
+For more information on how to run this script, run the command 
+‘python finetune-cv.py --help’ in the command line.
 """
 
 __author__    = "Enrique Manjavacas"
