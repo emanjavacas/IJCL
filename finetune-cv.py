@@ -24,7 +24,7 @@ from transformers import AutoModelForSequenceClassification, AutoTokenizer
 from transformers import DataCollatorWithPadding, EarlyStoppingCallback
 from transformers import Trainer, TrainingArguments
 
-from preprocess import encode_data, read_data
+from preprocess import encode_data, read_data, sample_up_to_n
 
 
 def get_dataset(tokenizer, sents, spans, labels):
@@ -57,7 +57,8 @@ if __name__ == '__main__':
     parser.add_argument('--epochs', type=int, default=6, help="Number of epochs to train.")
     parser.add_argument('--output-dir', required=True, help="Directory to store the finetuned model.")
     parser.add_argument('--results-path', help='Custom dir path for the results.')
-    parser.add_argument('--max-per-class', default=np.inf, help="Max items per class to train on.")
+    parser.add_argument('--max-per-class', default=np.inf, type=float, 
+                        help="Max items per class to train on.")
     parser.add_argument('--n-folds', type=int, default=10, help="Number of folds over the data.")
     args = parser.parse_args()
 
@@ -96,8 +97,9 @@ if __name__ == '__main__':
             train = pd.DataFrame(
                 {'labels': y[train], 'index': train}
             ).groupby('labels').apply(
-                lambda g: sample_up_to_n(g, args.max_per_class)
+                lambda g: sample_up_to_n(g, int(args.max_per_class))
             ).reset_index(drop=True)['index'].values
+            print("Training on", len(train), "instances")
 
         train_dataset = get_dataset(tokenizer, sents[train], spans[train], y[train])
         dev_dataset = get_dataset(tokenizer, sents[dev], spans[dev], y[dev])
@@ -130,7 +132,7 @@ if __name__ == '__main__':
             tokenizer=tokenizer,
             data_collator=DataCollatorWithPadding(tokenizer),
             # early stopping
-            callbacks=[EarlyStoppingCallback(early_stopping_patience=3)])
+            callbacks=[EarlyStoppingCallback(early_stopping_patience=2)])
 
         trainer.train()
         # these are actually the logits
@@ -146,7 +148,7 @@ if __name__ == '__main__':
             'scores': scores, 
             'preds': preds}))
         
-    prefix, _ = os.path.splitext(path)
+    prefix, _ = os.path.splitext(args.input_file)
     if args.results_path:
         if not os.path.isdir(args.results_path):
             os.makedirs(args.results_path)
