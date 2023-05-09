@@ -11,6 +11,7 @@ To run the python scripts from the command line, a number of arguments should be
 
 The repository relies on the `transformers` library.
 
+Check `requirements.txt` for a list of the packages needed to run the scripts. You can install all dependencies using the command `pip install -r requirements.txt`
 
 # Overview of files
 
